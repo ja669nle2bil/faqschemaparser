@@ -1,58 +1,75 @@
-//FAQ HTML structure const faqHTML = `
-<ul class="faq-list main-list">
-    {/* <!-- Add more level-1 sections as needed --> */}
-</ul>
-;
-
-// Function to generate Schema.org FAQPage JSON-LD
+//FAQ HTML Structure
+const faqHTML = `
+`;
+// Function to generate Schema.org FAQPage JSON-LD wrapped in <script> tag
 function generateFAQSchema() {
     // Create a temporary container to parse the HTML string
-    const container = document.getElementById('faq-container');
+    const container = document.getElmeentById('faq-container');
     container.innerHTML = faqHTML;
 
     const faqItems = container.querySelectorAll('.faq-list-item-level-two');
     const faqData = [];
+    const seenQuestions = new Set(); //Track duplicaties
 
     faqItems.forEach(item => {
-        // Extract question text (excluding SVG)
+        // Extract question text (excluding svg info/icons)
         const questionText = Array.from(item.childNodes)
             .filter(node => node.nodeType === Node.TEXT_NODE)
             .map(node => node.textContent.trim())
             .join('')
-            .trim();
+            .trim()
+            .replace(/\s+/g, ' '); // Normalize whitespaces
 
-        // Extract answer text (full HTML content of faq-item-body)
-        const answerBody = item.nextElementSibling;
-        const answerText = answerBody ? answerBody.innerHTML.trim() : '';
+         // Skip if question is empty or malformed
+         if(!questionText) return;
 
-        // Add to faqData array
-        faqData.push({
-            "@type": "Question",
-            "name": questionText,
-            "acceptedAnswer": {
+         // Extract answer text (convert HTML to plain text)
+         const answerBody = item.nextElementSibling;
+         let answerText = '';
+        if (answerBody) {
+            // Get all text content, excluding the separator div
+            const paragraphs = answerBody.querySelectorAll('p, ul, dl');
+            answertext = Array.from(paragraphs)
+                .map(p => p.textContent.trim())
+                .join(' ')
+                .replace(/\s+/g, ' ');
+        }
+
+         //Handle duplicates
+         if (seenQuestions.has(questionText)) {
+            console.warn(`Duplicate question found: "${questionText}"`);
+            return;
+         }
+        seenQuestions.add(questionText);
+
+         // Add to faqData Array:
+         faqData.push({
+             "@type": "Question",
+             "name": questionText,
+             "acceptedAnswer": {
                 "@type": "Answer",
-                "text": answerText
-            }
-        });
+                "text": answerText || "No answer provided."
+             }
+         });
     });
 
-    // Create the FAQPage schema
+    // Create the FAQPage schema.
     const faqSchema = {
         "@context": "https://schema.org",
         "@type": "FAQPage",
         "mainEntity": faqData
     };
 
-    // Output to console
-    console.log(JSON.stringify(faqSchema, null, 2));
+    // Wrap in <script> tag
+    const output = `<script type="application/ld+json">\n${JSON.stringify(faqSchema, null, 2)}\n</script>`;
 
-    // Optionally, return the schema if you want to use it elsewhere
-    return faqSchema;
+ // Output to console
+    console.log(output);
+
+    return output;
 }
 
 // Run the function when the page loads
 window.onload = function() {
-    const schema = generateFAQSchema();
-    // You can also display it on the page if desired:
-    // document.body.innerHTML += `<pre>${JSON.stringify(schema, null, 2)}</pre>`;
+    generateFAQSchema();
 };
